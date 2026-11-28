@@ -98,26 +98,45 @@ object BanglaWordSuggestions {
     /** Exact dictionary lookup, tolerant of accidental surrounding spaces/case. */
     fun exact(roman: String): String? = words[roman.trim().lowercase()]
 
-    /**
-     * Returns a small, deterministic candidate list for the current roman prefix.
-     * Exact matches rank first; duplicate Bangla spellings are collapsed so the
-     * suggestion strip never wastes slots on alternate Roman spellings (for example, "shob"/"sob").
-     */
+    // Build the sorted key index once. The old implementation scanned and sorted
+    // the entire dictionary on every keystroke, which made phonetic typing lag.
+    private val sortedWordEntries by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        words.entries.sortedBy { it.key }
+    }
+
+    /** Returns a deterministic short list using a binary-searched prefix range. */
     fun suggest(prefix: String, limit: Int = 3): List<String> {
         val query = prefix.trim().lowercase()
         val safeLimit = limit.coerceIn(0, 5)
         if (query.isBlank() || safeLimit == 0) return emptyList()
 
-        return words.entries.asSequence()
-            .filter { it.key.startsWith(query) }
-            .sortedWith(
-                compareByDescending<Map.Entry<String, String>> { it.key == query }
-                    .thenBy { it.key.length }
-                    .thenBy { it.key }
-            )
-            .map { it.value }
-            .distinct()
-            .take(safeLimit)
-            .toList()
+        val entries = sortedWordEntries
+        var low = 0
+        var high = entries.size
+        while (low < high) {
+            val mid = (low + high) ushr 1
+            if (entries[mid].key < query) low = mid + 1 else high = mid
+        }
+
+        val matches = ArrayList<Map.Entry<String, String>>(16)
+        var index = low
+        while (index < entries.size) {
+            val entry = entries[index]
+            if (!entry.key.startsWith(query)) break
+            matches.add(entry)
+            index++
+        }
+        matches.sortWith(
+            compareByDescending<Map.Entry<String, String>> { it.key == query }
+                .thenBy { it.key.length }
+                .thenBy { it.key }
+        )
+        val results = ArrayList<String>(safeLimit)
+        val seen = HashSet<String>(safeLimit)
+        for (entry in matches) {
+            if (seen.add(entry.value)) results.add(entry.value)
+            if (results.size == safeLimit) break
+        }
+        return results
     }
 }

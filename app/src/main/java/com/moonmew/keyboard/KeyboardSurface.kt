@@ -440,7 +440,7 @@ class KeyboardSurface(context: Context, private val listener: Listener) : View(c
     fun setShifted(value: Boolean) { shifted = value; rebuild(); invalidate() }
     fun setSymbols(value: Boolean) { symbols = value; emojiMode = false; clipboardMode = false; symbolsPage = 0; rebuild(); invalidate() }
     fun setEmoji(value: Boolean) { emojiMode = value; if (value) { emojiCategory = 0; emojiPage = 0 }; clipboardMode = false; symbols = false; rebuild(); invalidate() }
-    fun setEmojiCategory(value: Int) { emojiCategory = value.coerceIn(0, 7); emojiPage = 0; if (emojiMode) { rebuild(); invalidate() } }
+    fun setEmojiCategory(value: Int) { emojiCategory = value.coerceIn(0, EmojiCatalog.categories.lastIndex); emojiPage = 0; if (emojiMode) { rebuild(); invalidate() } }
     fun moveEmojiPage(delta: Int) { if (emojiMode) { emojiPage = (emojiPage + delta).coerceAtLeast(0); rebuild(); invalidate() } }
     fun setClipboard(value: Boolean) { clipboardMode = value; moreMenu = false; emojiMode = false; symbols = false; rebuild(); invalidate() }
     fun setMoreMenu(value: Boolean) { moreMenu = value && !passwordField; clipboardMode = false; emojiMode = false; symbols = false; rebuild(); invalidate() }
@@ -513,19 +513,8 @@ class KeyboardSurface(context: Context, private val listener: Listener) : View(c
                 rows.add(listOf(Key("Clear history", "CLIP_CLEAR", 1.4f, true), Key("ABC", "CLIP_CLOSE", 1f, true)))
             }
         } else if (emojiMode) {
-            // Expanded offline emoji groups: faces, animals, nature, food,
-            // activities, travel, objects and hearts/symbols.
-            val categories = listOf(
-                "😀 😃 😄 😁 😆 😅 😂 🤣 🥲 ☺️ 😊 😇 🙂 🙃 😉 😌 😍 🥰 😘 😗 😙 😚 😋 😛 😝 😜 🤪 🤨 🧐 🤓 😎 🥸 🤩 🥳 😏 😒 😞 😔 😟 😕 🙁 ☹️ 😣 😖 😫 😩 🥺 😢 😭 😤 😠 😡 🤯".split(" "),
-                "🐱 🐈 🐈‍⬛ 🐶 🐕 🐩 🐺 🦊 🦝 🐻 🐻‍❄️ 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🙈 🙉 🙊 🐔 🐧 🐦 🐤 🐣 🦆 🦉 🦇 🐴 🦄 🐝 🦋 🐌 🐞 🐢 🐍 🦎 🐙 🦀 🐠 🐬 🐳 🦈".split(" "),
-                "🌸 💐 🌷 🌹 🥀 🌺 🌻 🌼 🌵 🌲 🌳 🌴 🌱 🌿 ☘️ 🍀 🍁 🍂 🍃 🍄 🌾 💧 💦 🌊 🌈 ☀️ 🌤️ ⛅ 🌥️ ☁️ 🌦️ 🌧️ ⛈️ 🌩️ ❄️ ☃️ ⛄ 🌙 🌛 🌜 ⭐ 🌟 ✨ ⚡ 🔥 💥".split(" "),
-                "🍏 🍎 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🫐 🍈 🍒 🍑 🥭 🍍 🥥 🥝 🍅 🍆 🥑 🥦 🥬 🥒 🌶️ 🫑 🌽 🥕 🫒 🧄 🧅 🥔 🍠 🥐 🥯 🍞 🥖 🧀 🥚 🍳 🧈 🥞 🧇 🥓 🥩 🍗 🍖 🌭 🍔 🍟 🍕".split(" "),
-                "⚽ 🏀 🏈 ⚾ 🥎 🎾 🏐 🏉 🎱 🏓 🏸 🥅 🏒 🏑 🥍 🏏 🪃 🥊 🥋 🎣 🤿 🎽 🛹 🛼 🛷 ⛸️ 🥌 🎿 ⛷️ 🏂 🪂 🏋️ 🤼 🤸 ⛹️ 🤺 🏇 🧘 🏄 🏊 🚴".split(" "),
-                "🚗 🚕 🚙 🚌 🚎 🏎️ 🚓 🚑 🚒 🚐 🛻 🚚 🚛 🚜 🛵 🏍️ 🚲 🛴 🚏 🛣️ 🛤️ 🚨 🚥 🚦 🛑 🚧 ⚓ ⛵ 🚤 🛳️ ⛴️ 🛥️ 🚢 ✈️ 🛩️ 🛫 🛬 🪂 💺 🚁 🚟 🚠 🚡 🚀 🛸".split(" "),
-                "⌚ 📱 📲 💻 ⌨️ 🖥️ 🖨️ 🖱️ 🖲️ 💽 💾 💿 📀 📷 📸 📹 🎥 📞 ☎️ 📺 📻 🎙️ 🎚️ 🎛️ 🧭 ⏱️ ⏰ ⌛ 🔋 🪫 💡 🔦 🕯️ 🧯 🛒 🎁 🎀 🪄 🧸 🪅 🎈 🎉 🎊 🪩".split(" "),
-                "❤️ 🩷 🧡 💛 💚 🩵 💙 💜 🤎 🖤 🩶 🤍 💔 ❤️‍🔥 ❤️‍🩹 💕 💞 💓 💗 💖 💘 💝 ❣️ 💟 ☮️ ✝️ ☪️ 🕉️ ☸️ ✡️ 🔯 🕎 ☯️ ☦️ 🛐 ⛎ ♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓".split(" ")
-            )
-            rows.add(listOf("😀", "🐱", "🌿", "🍓", "⚽", "🚗", "💡", "♡").mapIndexed { index, label ->
+            val categories = EmojiCatalog.categories
+            rows.add(EmojiCatalog.tabs.mapIndexed { index, label ->
                 Key(label, "EMOJI_CAT:$index", 1f, true)
             })
             val emojiRows = categories[emojiCategory].chunked(8)
